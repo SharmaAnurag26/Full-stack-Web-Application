@@ -1,0 +1,49 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<script>
+window.onload = function() {
+    fetch('http://127.0.0.1:5000/unique-dealers/State/fresh')
+        .then(response => response.json())
+        .then(data => {
+            if (data.fresh_enquiry_unique_dealers) {
+                const dealersData = data.fresh_enquiry_unique_dealers;
+
+                // Convert the API data to CanvasJS dataPoints format
+                const dataPoints = dealersData.map(item => ({
+                    y: item.UniqueDealers,
+                    label: item.State
+                }));
+
+                // Create the chart
+                var chart = new CanvasJS.Chart("chartContainer", {
+                    animationEnabled: true,
+                    title: {
+                        text: "DEALERS IN STATES OF INDIA"
+                    },
+                    data: [{
+                        type: "pie",
+                        startAngle: 240,
+                        yValueFormatString: "#,##0\"\"",
+                        indexLabel: "{label} ({y})",
+                        dataPoints: dataPoints
+                    }]
+                });
+
+                chart.render();
+            } else {
+                document.getElementById("chartContainer").innerHTML = "No data available.";
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            document.getElementById("chartContainer").innerHTML = "Error loading chart.";
+        });
+}
+</script>
+</head>
+<body>
+    <div id="chartContainer" style="height: 400px; width: 100%;"></div>
+    <script src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
+</body>
+</html>

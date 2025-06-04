@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Pie Chart with Labels</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            z-index: 1;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>ENQUIRY TYPES</h1>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:5000/enquiry-types/old";
+
+        async function render3DPieChart() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error("Error:", data.error);
+                    return;
+                }
+
+                const labels = data.fresh_enquiry_types.map(item => item["Enquiry type"]);
+                const values = data.fresh_enquiry_types.map(item => item["total"]);
+
+                const total = values.reduce((sum, val) => sum + val, 0);
+                const proportions = values.map(val => (val / total) * 360);
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0xffffff, 1);
+                document.body.appendChild(renderer.domElement);
+
+                let startAngle = 0;
+                const radius = 5;
+
+                proportions.forEach((angle, index) => {
+                    const startRad = THREE.MathUtils.degToRad(startAngle);
+                    const angleRad = THREE.MathUtils.degToRad(angle);
+
+                    // Slice
+                    const geometry = new THREE.CylinderGeometry(radius, radius, 1, 50, 1, false, startRad, angleRad);
+                    const material = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color().setStyle(`#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`)
+                    });
+                    const slice = new THREE.Mesh(geometry, material);
+                    slice.rotation.x = Math.PI / 2;
+                    scene.add(slice);
+
+                    // Label
+                    const midAngle = startAngle + angle / 2;
+                    const midRad = THREE.MathUtils.degToRad(midAngle);
+                    const labelX = Math.cos(midRad) * (radius + 1.5);
+                    const labelY = Math.sin(midRad) * (radius + 1.5);
+
+                    const percent = ((values[index] / total) * 100).toFixed(1);
+                    const labelText = `${labels[index]} (${percent}%)`;
+                    const label = makeTextSprite(labelText, {
+                        fontsize: 24,
+                        borderColor: { r: 0, g: 0, b: 0, a: 1.0 },
+                        backgroundColor: { r: 255, g: 255, b: 255, a: 0.6 }
+                    });
+
+                    label.position.set(labelX, labelY, 1.2); // Above the pie
+                    scene.add(label);
+
+                    startAngle += angle;
+                });
+
+                camera.position.z = 15;
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    scene.rotation.y += 0.005;
+                    renderer.render(scene, camera);
+                }
+
+                animate();
+
+                // Function to make text sprite
+                function makeTextSprite(message, parameters) {
+                    const fontface = parameters.fontface || "Arial";
+                    const fontsize = parameters.fontsize || 18;
+                    const borderThickness = parameters.borderThickness || 2;
+                    const borderColor = parameters.borderColor || { r: 0, g: 0, b: 0, a: 1.0 };
+                    const backgroundColor = parameters.backgroundColor || { r: 255, g: 255, b: 255, a: 1.0 };
+
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    context.font = `bold ${fontsize}px ${fontface}`;
+
+                    const metrics = context.measureText(message);
+                    const textWidth = metrics.width;
+
+                    context.fillStyle = `rgba(${backgroundColor.r},${backgroundColor.g},${backgroundColor.b},${backgroundColor.a})`;
+                    context.strokeStyle = `rgba(${borderColor.r},${borderColor.g},${borderColor.b},${borderColor.a})`;
+
+                    context.lineWidth = borderThickness;
+                    context.strokeRect(0, 0, textWidth + 10, fontsize + 10);
+                    context.fillRect(0, 0, textWidth + 10, fontsize + 10);
+
+                    context.fillStyle = "rgba(0, 0, 0, 1.0)";
+                    context.fillText(message, 5, fontsize + 2);
+
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                    const sprite = new THREE.Sprite(spriteMaterial);
+                    sprite.scale.set(4, 2, 1);
+
+                    return sprite;
+                }
+
+            } catch (error) {
+                console.error("An error occurred:", error);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", render3DPieChart);
+    </script>
+</body>
+</html>

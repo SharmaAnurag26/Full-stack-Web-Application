@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Bar Plot</title>
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Center the chart in the page */
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+        }
+
+        canvas {
+            max-width: 80%;
+            max-height: 80%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas for the chart -->
+    <canvas id="barChart"></canvas>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:5000/enquiry-sources/fresh";
+
+        async function renderBarPlot() {
+            try {
+                // Fetch data from API
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error("Error:", data.error);
+                    return;
+                }
+
+                // Extract labels and values
+                const labels = data.fresh_enquiry_sources.map(item => item["Source"]);
+                const values = data.fresh_enquiry_sources.map(item => item["total"]);
+
+                // Create a bar chart using Chart.js
+                const ctx = document.getElementById('barChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels, // Labels for the bars (sources)
+                        datasets: [{
+                            data: values, // Values for each bar
+                            backgroundColor: [
+                                '#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#FF5722', '#03A9F4',
+                                '#E91E63', '#CDDC39', '#FFC107', '#8BC34A'
+                            ], // Colors for each bar
+                            borderColor: '#333333',
+                            borderWidth: 1.5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: false // Remove legend
+                            },
+                            tooltip: {
+                                enabled: true, // Enable tooltips on hover
+                                backgroundColor: '#333333',
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 12
+                                },
+                                bodyColor: '#ffffff',
+                                titleColor: '#ffffff'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Sources',
+                                    font: {
+                                        size: 16,
+                                        weight: 'bold'
+                                    },
+                                    color: '#333333'
+                                },
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 12
+                                    },
+                                    color: '#333333'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true, // Ensure Y-axis starts at 0
+                                title: {
+                                    display: true,
+                                    text: 'Total Enquiries',
+                                    font: {
+                                        size: 16,
+                                        weight: 'bold'
+                                    },
+                                    color: '#333333'
+                                },
+                                grid: {
+                                    color: '#e0e0e0',
+                                    borderDash: [5, 5]
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 12
+                                    },
+                                    color: '#333333'
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("An error occurred:", error);
+            }
+        }
+
+        renderBarPlot();
+    </script>
+</body>
+</html>

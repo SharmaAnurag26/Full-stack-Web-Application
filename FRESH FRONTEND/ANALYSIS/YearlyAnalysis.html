@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Multi-Line Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div>
+        <label for="product-select">Select Product:</label>
+        <select id="product-select"></select>
+    </div>
+    <canvas id="salesChart" width="800" height="400"></canvas>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const productSelect = document.getElementById('product-select');
+            const ctx = document.getElementById('salesChart').getContext('2d');
+
+            // Fetch data from the API
+            const response = await fetch('http://localhost:5000/product-sales/monthly/fresh');
+            const data = await response.json();
+
+            // Extract unique products for dropdown
+            const products = [...new Set(data.monthly_fresh_product_sales.map(item => item.product))];
+            products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product;
+                option.textContent = product;
+                productSelect.appendChild(option);
+            });
+
+            let chartInstance; // Variable to hold the current chart instance
+
+            // Function to create chart
+            const createChart = (selectedProduct) => {
+                // Destroy the old chart if it exists
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                // Filter data based on selected product
+                const filteredData = data.monthly_fresh_product_sales.filter(item => item.product === selectedProduct);
+
+                const groupedByYear = filteredData.reduce((acc, curr) => {
+                    const year = curr.month.split('-')[0];
+                    if (!acc[year]) acc[year] = [];
+                    acc[year].push(curr);
+                    return acc;
+                }, {});
+
+                const datasets = Object.keys(groupedByYear).map(year => ({
+                    label: year,
+                    data: groupedByYear[year].map(item => ({
+                        x: item.month.split('-')[1], // Extract month
+                        y: item.total_sales
+                    })),
+                    borderColor: `#${Math.floor(Math.random()*16777215).toString(16)}`, // Random color
+                    borderWidth: 2,
+                    fill: false
+                }));
+
+                // Create new chart
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Total Sales'
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+
+            // Default chart for the first product
+            createChart(products[0]);
+
+            // Update chart when product is selected
+            productSelect.addEventListener('change', (event) => {
+                createChart(event.target.value);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Column Chart with Machine-Specific Colors</title>
+    <script src="https://cdn.anychart.com/releases/8.10.0/js/anychart-bundle.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            width: 100%;
+            height: 90%;
+        }
+        #filter {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="filter">
+        <label for="stateSelect">Select State:</label>
+        <select id="stateSelect">
+            <option value="">All States</option>
+        </select>
+    </div>
+    <div id="container"></div>
+    <script>
+        let allData = [];
+        let chart; // Declare the chart globally
+
+        // Fetch data from the API
+        fetch('http://localhost:5000/product-sales/state-wise/India')
+            .then(response => response.json())
+            .then(data => {
+                allData = data.state_wise_product_sales;
+
+                // Populate the dropdown with unique state names
+                const stateSelect = document.getElementById('stateSelect');
+                const uniqueStates = [...new Set(allData.map(item => item['State']))];
+                uniqueStates.forEach(state => {
+                    const option = document.createElement('option');
+                    option.value = state;
+                    option.textContent = state;
+                    stateSelect.appendChild(option);
+                });
+
+                // Create the initial chart with all data
+                createChart(allData);
+
+                // Add event listener to filter data based on state selection
+                stateSelect.addEventListener('change', (event) => {
+                    const selectedState = event.target.value;
+                    const filteredData = selectedState
+                        ? allData.filter(item => item['State'] === selectedState)
+                        : allData;
+
+                    const chartData = filteredData.map(item => [
+                        item['Products interested'], // Machine names for x-axis
+                        item['Total Sales']
+                    ]);
+
+                    updateChart(chartData, selectedState);
+                });
+            })
+            .catch(error => console.error('Error fetching data:', error));
+
+        // Function to create the initial chart
+        function createChart(data) {
+            const chartData = data.map(item => ({
+                x: item['Products interested'], // Machine names for x-axis
+                value: item['Total Sales'],
+                fill: getRandomColor() // Assign a random color to each bar
+            }));
+
+            chart = anychart.column3d();
+            chart.data(chartData);
+
+            // Set chart title
+            chart.title('State-Wise Machine/Product Sales (India)');
+            chart.xAxis().title('Machine/Product Names');
+            chart.yAxis().title('Total Sales');
+
+            chart.container('container');
+            chart.draw();
+        }
+
+        // Function to update the chart with new data
+        function updateChart(chartData, selectedState) {
+            const formattedData = chartData.map(item => ({
+                x: item[0], // Machine names for x-axis
+                value: item[1],
+                fill: getRandomColor() // Assign a random color to each bar
+            }));
+
+            chart.data(formattedData);
+
+            // Update chart title dynamically
+            chart.title(selectedState 
+                ? `Machine Sales for ${selectedState}` 
+                : 'State-Wise Machine/Product Sales (India)');
+        }
+
+        // Function to generate random colors
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+</body>
+</html>

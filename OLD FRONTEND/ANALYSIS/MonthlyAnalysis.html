@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monthly Machine Sales (Fresh Enquiry - Financial Year)</title>
+  <script src="https://cdn.anychart.com/releases/8.10.0/js/anychart-bundle.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    #filters {
+      margin: 15px;
+    }
+    select {
+      padding: 5px 10px;
+      margin-right: 15px;
+    }
+    #container {
+      width: 100%;
+      height: 90vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="filters">
+    <label for="productSelect">Select Product:</label>
+    <select id="productSelect">
+      <option value="">All Products</option>
+    </select>
+
+    <label for="yearSelect">Select Financial Year:</label>
+    <select id="yearSelect">
+      <option value="">All Years</option>
+    </select>
+  </div>
+
+  <div id="container"></div>
+
+  <script>
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    let allData = [];
+    let chart;
+
+    fetch('http://localhost:5000/product-sales/monthly/fresh')
+      .then(response => response.json())
+      .then(data => {
+        allData = data.monthly_fresh_product_sales;
+
+        // Add financial year and full month name to each record
+        allData.forEach(item => {
+          const [year, month] = item.month.split('-').map(Number);
+          item.month_num = month;
+          item.month_name = monthNames[month - 1];
+          item.fin_year = (month >= 4) ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+        });
+
+        populateDropdowns();
+        createChart(allData);
+
+        document.getElementById('productSelect').addEventListener('change', filterAndUpdateChart);
+        document.getElementById('yearSelect').addEventListener('change', filterAndUpdateChart);
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error);
+        document.getElementById('container').innerHTML = "Error loading chart.";
+      });
+
+    function populateDropdowns() {
+      const productSelect = document.getElementById('productSelect');
+      const yearSelect = document.getElementById('yearSelect');
+
+      const uniqueProducts = [...new Set(allData.map(item => item.product))];
+      const uniqueYears = [...new Set(allData.map(item => item.fin_year))];
+
+      uniqueProducts.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product;
+        option.textContent = product;
+        productSelect.appendChild(option);
+      });
+
+      uniqueYears.sort().forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        yearSelect.appendChild(option);
+      });
+    }
+
+    function filterAndUpdateChart() {
+      const selectedProduct = document.getElementById('productSelect').value;
+      const selectedYear = document.getElementById('yearSelect').value;
+
+      const filtered = allData.filter(item => {
+        const productMatch = selectedProduct ? item.product === selectedProduct : true;
+        const yearMatch = selectedYear ? item.fin_year === selectedYear : true;
+        return productMatch && yearMatch;
+      });
+
+      const chartData = filtered
+        .sort((a, b) => a.month_num - b.month_num) // Ensure months are in order
+        .map(item => ({
+          x: item.month_name,
+          value: item.total_sales,
+          fill: getRandomColor()
+        }));
+
+      updateChart(chartData, selectedProduct, selectedYear);
+    }
+
+    function createChart(data) {
+      const chartData = data
+        .sort((a, b) => a.month_num - b.month_num)
+        .map(item => ({
+          x: item.month_name,
+          value: item.total_sales,
+          fill: getRandomColor()
+        }));
+
+      chart = anychart.column3d();
+      chart.data(chartData);
+
+      chart.title("Monthly Product Sales (Fresh Enquiry - Financial Year)");
+      chart.xAxis().title("Month");
+      chart.yAxis().title("Total Sales");
+
+      chart.container("container");
+      chart.draw();
+    }
+
+    function updateChart(chartData, product, year) {
+      chart.data(chartData);
+
+      let title = "Monthly Sales";
+      if (product) title += ` for ${product}`;
+      if (year) title += ` (${year})`;
+
+      chart.title(title);
+    }
+
+    function getRandomColor() {
+      const letters = "0123456789ABCDEF";
+      let color = "#";
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+  </script>
+</body>
+</html>

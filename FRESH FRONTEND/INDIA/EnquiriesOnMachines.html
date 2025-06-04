@@ -1,0 +1,95 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <script src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
+</head>
+<body>
+
+<h2></h2>
+
+<label for="productSelect">Select a Product:</label>
+<select id="productSelect" onchange="updateChart()">
+    <option value="">--Select--</option>
+</select>
+
+<div id="chartContainer" style="height: 400px; width: 100%; margin-top: 20px;"></div>
+
+<script>
+    let enquiryData = [];
+
+    // Fetch API data on load
+    window.onload = function () {
+        fetch('http://127.0.0.1:5000/enquiry-types/state-wise/India')
+            .then(response => response.json())
+            .then(data => {
+                if (data.state_wise_enquiry_types) {
+                    enquiryData = data.state_wise_enquiry_types;
+
+                    // Get unique products
+                    const products = [...new Set(enquiryData.map(item => item.product_name))];
+                    const select = document.getElementById("productSelect");
+
+                    // Populate the select dropdown
+                    products.forEach(product => {
+                        const option = document.createElement("option");
+                        option.value = product;
+                        option.textContent = product;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching data:", error);
+                document.getElementById("chartContainer").innerText = "Error loading chart.";
+            });
+    };
+
+    function updateChart() {
+        const selectedProduct = document.getElementById("productSelect").value;
+
+        if (!selectedProduct) {
+            document.getElementById("chartContainer").innerText = "Please select a product.";
+            return;
+        }
+
+        // Filter data by selected product
+        const filtered = enquiryData.filter(item => item.product_name === selectedProduct);
+
+        // Group by enquiry_type and count
+        const typeCount = {};
+        filtered.forEach(item => {
+            if (!typeCount[item.enquiry_type]) {
+                typeCount[item.enquiry_type] = 0;
+            }
+            typeCount[item.enquiry_type] += item.enquiry_count;
+        });
+
+        // Convert to CanvasJS dataPoints with custom colors
+        const colors = ["orange", "skyblue", "lightgreen"];
+        const dataPoints = Object.entries(typeCount).map(([label, y], index) => ({
+            label,
+            y,
+            color: colors[index % colors.length]
+        }));
+
+        // Render the chart
+        const chart = new CanvasJS.Chart("chartContainer", {
+            animationEnabled: true,
+            title: {
+                text: `Enquiry Type  for "${selectedProduct}"`
+            },
+            data: [{
+                type: "pie",
+                startAngle: 240,
+                yValueFormatString: "#,##0\"\"",
+                indexLabel: "{label} ({y})",
+                dataPoints: dataPoints
+            }]
+        });
+
+        chart.render();
+    }
+</script>
+
+</body>
+</html>

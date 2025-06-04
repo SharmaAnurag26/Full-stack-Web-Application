@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Country-Wise Product Sales (Global)</title>
+    <script src="https://cdn.anychart.com/releases/8.10.0/js/anychart-bundle.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            width: 100%;
+            height: 90%;
+        }
+        #filter {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="filter">
+        <label for="countrySelect">Select Country:</label>
+        <select id="countrySelect">
+            <option value="">All Countries</option>
+        </select>
+    </div>
+    <div id="container"></div>
+    <script>
+        let allData = [];
+        let chart;
+
+        fetch('http://localhost:5000/product-sales/country-wise/global')
+            .then(response => response.json())
+            .then(data => {
+                allData = data.country_product_sales_global;
+
+                const countrySelect = document.getElementById('countrySelect');
+                const uniqueCountries = [...new Set(allData.map(item => item['Country']))];
+
+                uniqueCountries.forEach(country => {
+                    const option = document.createElement('option');
+                    option.value = country;
+                    option.textContent = country;
+                    countrySelect.appendChild(option);
+                });
+
+                createChart(allData);
+
+                countrySelect.addEventListener('change', (event) => {
+                    const selectedCountry = event.target.value;
+                    const filteredData = selectedCountry
+                        ? allData.filter(item => item['Country'] === selectedCountry)
+                        : allData;
+
+                    const chartData = filteredData.map(item => [
+                        item['Products interested'],
+                        item['Total Sales']
+                    ]);
+
+                    updateChart(chartData, selectedCountry);
+                });
+            })
+            .catch(error => console.error('Error fetching data:', error));
+
+        function createChart(data) {
+            const chartData = data.map(item => ({
+                x: item['Products interested'],
+                value: item['Total Sales'],
+                fill: getRandomColor()
+            }));
+
+            chart = anychart.column3d();
+            chart.data(chartData);
+            chart.title('Country-Wise Product Sales (Global)');
+            chart.xAxis().title('Products Interested');
+            chart.yAxis().title('Total Sales');
+            chart.container('container');
+            chart.draw();
+        }
+
+        function updateChart(chartData, selectedCountry) {
+            const formattedData = chartData.map(item => ({
+                x: item[0],
+                value: item[1],
+                fill: getRandomColor()
+            }));
+
+            chart.data(formattedData);
+
+            chart.title(selectedCountry
+                ? `Product Sales for ${selectedCountry}`
+                : 'Country-Wise Product Sales (Global)');
+        }
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+</body>
+</html>
